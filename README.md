@@ -267,12 +267,6 @@ Pour ajouter ou modifier une région après l'initialisation, utilisez
 directement la base de données ou appelez l'API avec un client HTTP
 (Postman, curl) en tant qu'admin.
 
-## Limitations connues
-
-- Une demande porte sur un seul produit à la fois (`DemandeDetail`
-  multi-lignes identifié comme évolution future, volontairement hors
-  périmètre).
-- Pas de tests automatisés (JUnit) à ce stade — validation manuelle.
 - `spring.jpa.hibernate.ddl-auto=update` : convient au développement,
   mais une vraie stratégie de migration (Flyway/Liquibase) serait
   nécessaire avant un déploiement en production.
