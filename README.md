@@ -85,7 +85,8 @@ Gestion-Stock-TT/
 │       ├── entity/         Entités JPA
 │       ├── dto/request/    Objets de requête (entrée API)
 │       ├── dto/response/   Objets de réponse (sortie API)
-│       ├── config/         Sécurité, JWT, audit JPA, CORS
+│       ├── config/         Sécurité, JWT, audit JPA, CORS,
+│       │                   initialisation des données (DataInitializer)
 │       └── exception/      Gestion centralisée des erreurs
 ├── frontend/src/
 │   ├── pages/           Une page par module (Stock, Demandes, ...)
@@ -95,7 +96,7 @@ Gestion-Stock-TT/
 │   ├── auth/             Contexte d'authentification, route protégée
 │   └── utils/            Fonctions utilitaires (formatage, export)
 └── database/
-    └── seed.sql          Jeu de données de démonstration
+    └── seed.sql          Jeu de données de démonstration (comptes région)
 ```
 
 ## Installation
@@ -109,15 +110,36 @@ Gestion-Stock-TT/
 
 ```bash
 cd backend/gestion-stock-backend
-# configurer src/main/resources/application.properties :
+
+# Copier le fichier d'exemple et renseigner vos propres valeurs
+cp src/main/resources/application.properties.example src/main/resources/application.properties
+# puis éditer application.properties :
 #   spring.datasource.url / username / password
 #   jwt.secret (chaîne aléatoire d'au moins 32 caractères)
 #   spring.mail.* (pour l'envoi des codes OTP)
+
 mvn spring-boot:run
 ```
 Le backend démarre sur `http://localhost:8081`.
 
-### Base de données
+> `application.properties` est volontairement absent du dépôt (voir
+> `.gitignore`) car il contient des identifiants réels. Seul
+> `application.properties.example`, avec des valeurs de substitution,
+> est versionné.
+
+Au tout premier démarrage sur une base vide, `DataInitializer`
+initialise automatiquement les 24 régions, l'entrepôt Stock Central
+(`region.central = true`), et un compte administrateur par défaut
+(identifiants configurables via `app.admin.*`, voir plus bas). Cette
+étape est idempotente : elle ne s'exécute que si les tables sont vides,
+donc elle reste sans effet sur les démarrages suivants.
+
+### Base de données (jeu de données de démonstration)
+
+`DataInitializer` couvre le strict minimum pour démarrer (régions,
+Stock Central, admin). Pour disposer en plus des comptes
+`RESPONSABLE_REGION` de démonstration et d'un jeu de données plus
+complet, chargez ensuite :
 
 ```bash
 psql -U postgres -d gestion_stock_tt -f database/seed.sql
@@ -133,16 +155,13 @@ npm run dev
 Le frontend démarre sur `http://localhost:5173` et proxifie les appels
 `/api` vers le backend (voir `vite.config.js`).
 
-> **Note sécurité** : `spring.datasource.password` et `jwt.secret` sont
-> actuellement en clair dans `application.properties`. À déplacer en
-> variables d'environnement avant tout déploiement public.
-
 ## Variables d'environnement
 
 Toutes les valeurs sensibles sont dans
-`backend/gestion-stock-backend/src/main/resources/application.properties`.
-À externaliser (variables d'environnement ou secrets manager) avant
-tout déploiement public.
+`backend/gestion-stock-backend/src/main/resources/application.properties`
+(non versionné — voir `.gitignore`). Le fichier
+`application.properties.example`, versionné, documente la structure
+attendue avec des valeurs de substitution.
 
 | Propriété | Description | Exemple |
 |---|---|---|
@@ -156,9 +175,16 @@ tout déploiement public.
 | `spring.mail.username` | Adresse e-mail expéditrice | `votre@gmail.com` |
 | `spring.mail.password` | Mot de passe applicatif Gmail (App Password) | `••••` |
 | `otp.expiration-minutes` | Durée de validité du code OTP | `5` |
+| `app.admin.username` | Identifiant du compte admin créé par `DataInitializer` | `admin` |
+| `app.admin.password` | Mot de passe du compte admin créé par `DataInitializer` | `••••` |
+| `app.admin.email` | E-mail du compte admin (réception des OTP) | `admin@example.com` |
 
 > Pour Gmail, activez la validation en deux étapes puis générez un
 > **App Password** dédié — ne mettez pas votre mot de passe principal.
+> Si un App Password a été exposé par erreur (ex: commit accidentel),
+> révoquez-le immédiatement depuis
+> [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords)
+> et générez-en un nouveau.
 
 ## Flux d'authentification (OTP)
 
@@ -180,8 +206,10 @@ L'authentification se déroule en deux étapes :
 
 ## Comptes de démonstration
 
-Après avoir chargé `database/seed.sql`, les comptes suivants sont disponibles.
-**Mot de passe commun : `Admin@123`**
+Le compte administrateur par défaut (`app.admin.*`) est créé
+automatiquement par `DataInitializer` au premier démarrage. Après avoir
+chargé `database/seed.sql`, les comptes suivants sont également
+disponibles. **Mot de passe commun : `Admin@123`**
 
 | Identifiant | Rôle | Région |
 |---|---|---|
@@ -227,15 +255,17 @@ un code OTP envoyé par e-mail, avant la délivrance du jeton JWT.
 
 ## Gestion des régions
 
-Les 24 régions de Tunisie Telecom sont pré-chargées via `database/seed.sql`
-et ne sont **pas gérables depuis l'interface utilisateur** (pas de page
-dédiée). L'API backend `/api/regions` reste disponible (lecture seule pour
-tous les rôles, CRUD pour les admins) car elle alimente les listes
-déroulantes de sélection de région dans les formulaires (Demandes, Retours,
-Mouvements, Utilisateurs).
+Les 24 régions de Tunisie Telecom ainsi que le Stock Central sont
+initialisés automatiquement par `DataInitializer` au premier démarrage
+(sur base vide), et **ne sont pas gérables depuis l'interface
+utilisateur** (pas de page dédiée). L'API backend `/api/regions` reste
+disponible (lecture seule pour tous les rôles, CRUD pour les admins)
+car elle alimente les listes déroulantes de sélection de région dans
+les formulaires (Demandes, Retours, Mouvements, Utilisateurs).
 
-Pour ajouter ou modifier une région, utilisez directement la base de données
-ou appelez l'API avec un client HTTP (Postman, curl) en tant qu'admin.
+Pour ajouter ou modifier une région après l'initialisation, utilisez
+directement la base de données ou appelez l'API avec un client HTTP
+(Postman, curl) en tant qu'admin.
 
 ## Limitations connues
 
