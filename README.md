@@ -213,7 +213,7 @@ disponibles. **Mot de passe commun : `Admin@123`**
 
 | Identifiant | Rôle | Région |
 |---|---|---|
-| `admin` | ADMIN | — (accès global) |
+| `admin` | ADMIN |  (accès global) |
 | `resp_tunis` | RESPONSABLE_REGION | Tunis |
 | `resp_sfax` | RESPONSABLE_REGION | Sfax |
 | `resp_sousse` | RESPONSABLE_REGION | Sousse |
